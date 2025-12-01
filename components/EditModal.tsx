@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScheduleItem, WorkLocation, WorkStatus, PartnerCode } from '../types';
 import { PARTNER_NAMES } from '../constants';
+import { formatMonth } from '../utils';
 import { X, Save } from 'lucide-react';
 
 interface EditModalProps {
@@ -9,10 +10,20 @@ interface EditModalProps {
   onClose: () => void;
   onSave: (updatedItem: ScheduleItem) => void;
   day: number | null;
+  currentYear: number;
+  currentMonth: number;
   data: ScheduleItem | null;
 }
 
-export const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, day, data }) => {
+export const EditModal: React.FC<EditModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  day, 
+  currentYear,
+  currentMonth,
+  data 
+}) => {
   const [status, setStatus] = useState<WorkStatus>('off');
   const [location, setLocation] = useState<WorkLocation>('Тастак');
   const [partner, setPartner] = useState<PartnerCode>('Ман');
@@ -32,7 +43,7 @@ export const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, d
 
   const handleSave = () => {
     const newItem: ScheduleItem = {
-      date: `2025-12-${String(day).padStart(2, '0')}`,
+      date: `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
       status,
     };
 
@@ -44,6 +55,8 @@ export const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, d
     onSave(newItem);
     onClose();
   };
+
+  const monthName = formatMonth(currentYear, currentMonth);
 
   return (
     <AnimatePresence>
@@ -63,7 +76,9 @@ export const EditModal: React.FC<EditModalProps> = ({ isOpen, onClose, onSave, d
             className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl"
           >
             <div className="bg-slate-100 p-4 flex justify-between items-center border-b border-slate-200">
-              <h3 className="text-lg font-bold text-slate-800">Редактирование: {day} дек.</h3>
+              <h3 className="text-lg font-bold text-slate-800">
+                Редактирование: {day} {monthName.toLowerCase().slice(0, 3)}.
+              </h3>
               <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full transition-colors">
                 <X size={20} className="text-slate-500" />
               </button>
