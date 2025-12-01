@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScheduleItem } from '../types';
 import { PARTNER_NAMES } from '../constants'; 
-import { X, Calendar, MapPin, User, Coffee, Briefcase } from 'lucide-react';
+import { X, MapPin, User, Coffee, Briefcase } from 'lucide-react';
 import { cn } from '../utils';
 
 interface DetailsModalProps {

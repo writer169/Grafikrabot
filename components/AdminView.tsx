@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ScheduleItem, DayStats } from '../types';
 import { WEEKDAYS } from '../constants';

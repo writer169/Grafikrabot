@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { SCHEDULE_DATA as DEFAULT_SCHEDULE, WEEKDAYS } from './constants';
 import { ScheduleItem } from './types';
@@ -63,9 +62,6 @@ const App: React.FC = () => {
         // Fallback for demo/dev if API fails
         console.warn("Using local fallback data");
         setSchedule(getInitialSchedule());
-        // For testing admin interface locally, uncomment below:
-        // setUserRole('admin'); 
-        // setError(null);
         setError("Ошибка подключения к серверу");
       } finally {
         setIsLoading(false);
@@ -233,8 +229,6 @@ const App: React.FC = () => {
         </>
         )}
 
-        {/* Details Modal (Read Only for everyone) */}
-        {/* Note: Admin edits via a different modal inside AdminView */}
         <DetailsModal 
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
