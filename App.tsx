@@ -6,13 +6,25 @@ import { DetailsModal } from './components/DetailsModal';
 import { Stats } from './components/Stats';
 import { AdminView } from './components/AdminView';
 import { BulkEditPage } from './components/BulkEditPage';
-import { getMonthStats } from './utils';
-import { Calendar as CalendarIcon, Lock, Loader2, Edit3 } from 'lucide-react';
+import { 
+  getMonthStats, 
+  getDaysInMonth, 
+  getFirstDayOfMonth, 
+  formatMonth,
+  getNextMonth,
+  getPrevMonth,
+  isToday as checkIsToday
+} from './utils';
+import { Calendar as CalendarIcon, Lock, Loader2, Edit3, ChevronLeft, ChevronRight } from 'lucide-react';
 
-// Fallback logic for when API is not available or local dev without Mongo
+// Fallback logic for when API is not available
 const getInitialSchedule = () => DEFAULT_SCHEDULE;
 
 const App: React.FC = () => {
+  // Date State
+  const [currentYear, setCurrentYear] = useState(2025);
+  const [currentMonth, setCurrentMonth] = useState(12);
+
   // Routing & Auth State
   const [accessKey, setAccessKey] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'user' | null>(null);
@@ -30,7 +42,7 @@ const App: React.FC = () => {
   const [selectedData, setSelectedData] = useState<ScheduleItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 1. Check URL for key and Fetch Data
+  // Fetch data when month/year changes
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const key = params.get('key') || params.get('k');
@@ -44,8 +56,9 @@ const App: React.FC = () => {
     setAccessKey(key);
 
     const fetchData = async () => {
+      setIsLoading(true);
       try {
-        const res = await fetch(`/api/schedule?key=${key}`);
+        const res = await fetch(`/api/schedule?key=${key}&month=${currentMonth}&year=${currentYear}`);
         
         if (res.status === 401 || res.status === 403) {
            setError("Неверный ключ доступа");
@@ -57,13 +70,28 @@ const App: React.FC = () => {
 
         const data = await res.json();
         setUserRole(data.role);
-        // If DB has data, use it; otherwise fallback to constants (or empty)
-        setSchedule(data.schedule || getInitialSchedule());
+        
+        // If DB has data for this month, use it; otherwise empty array
+        if (data.schedule && data.schedule.length > 0) {
+          setSchedule(data.schedule);
+        } else if (currentYear === 2025 && currentMonth === 12) {
+          // Only use fallback for Dec 2025
+          setSchedule(getInitialSchedule());
+        } else {
+          setSchedule([]);
+        }
+        
+        setHasUnsavedChanges(false);
       } catch (err) {
         console.error("API Fetch Error:", err);
-        // Fallback for demo/dev if API fails
         console.warn("Using local fallback data");
-        setSchedule(getInitialSchedule());
+        
+        if (currentYear === 2025 && currentMonth === 12) {
+          setSchedule(getInitialSchedule());
+        } else {
+          setSchedule([]);
+        }
+        
         setError("Ошибка подключения к серверу");
       } finally {
         setIsLoading(false);
@@ -71,7 +99,7 @@ const App: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  }, [currentMonth, currentYear]);
 
   // Derived State
   const scheduleMap = useMemo(() => {
@@ -84,9 +112,31 @@ const App: React.FC = () => {
 
   const stats = useMemo(() => getMonthStats(schedule), [schedule]);
 
-  const totalDays = 31;
-  const startEmptyDays = 0;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const totalDays = getDaysInMonth(currentYear, currentMonth);
+  const startEmptyDays = getFirstDayOfMonth(currentYear, currentMonth);
+
+  // Navigation
+  const goToNextMonth = () => {
+    if (hasUnsavedChanges) {
+      if (!confirm('У вас есть несохраненные изменения. Продолжить без сохранения?')) {
+        return;
+      }
+    }
+    const next = getNextMonth(currentYear, currentMonth);
+    setCurrentYear(next.year);
+    setCurrentMonth(next.month);
+  };
+
+  const goToPrevMonth = () => {
+    if (hasUnsavedChanges) {
+      if (!confirm('У вас есть несохраненные изменения. Продолжить без сохранения?')) {
+        return;
+      }
+    }
+    const prev = getPrevMonth(currentYear, currentMonth);
+    setCurrentYear(prev.year);
+    setCurrentMonth(prev.month);
+  };
 
   // Logic Helpers
   const handleDayClick = (day: number, data?: ScheduleItem) => {
@@ -104,7 +154,7 @@ const App: React.FC = () => {
     if (!accessKey) return;
     setIsSaving(true);
     try {
-        const res = await fetch(`/api/schedule?key=${accessKey}`, {
+        const res = await fetch(`/api/schedule?key=${accessKey}&month=${currentMonth}&year=${currentYear}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ schedule })
@@ -132,7 +182,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && !accessKey) {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4">
             <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm text-center">
@@ -152,6 +202,8 @@ const App: React.FC = () => {
     return (
       <BulkEditPage
         schedule={schedule}
+        currentYear={currentYear}
+        currentMonth={currentMonth}
         onUpdateSchedule={handleUpdateSchedule}
         onSaveToCloud={handleSaveToCloud}
         onBack={() => setCurrentPage('calendar')}
@@ -173,34 +225,52 @@ const App: React.FC = () => {
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-8 sm:py-12">
         
         {/* Header */}
-        <header className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-            <div>
-                <div className="flex items-center gap-2 text-indigo-600 mb-2">
-                    <CalendarIcon size={20} />
-                    <span className="text-sm font-semibold uppercase tracking-widest">Рабочий график</span>
-                </div>
-                <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight">
-                    Декабрь <span className="text-indigo-600">2025</span>
-                </h1>
+        <header className="mb-8">
+          <div className="flex items-center gap-2 text-indigo-600 mb-2">
+            <CalendarIcon size={20} />
+            <span className="text-sm font-semibold uppercase tracking-widest">Рабочий график</span>
+          </div>
+          
+          {/* Month Navigation */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={goToPrevMonth}
+              className="p-2 hover:bg-slate-200 rounded-xl transition-colors"
+              title="Предыдущий месяц"
+            >
+              <ChevronLeft size={24} className="text-slate-600" />
+            </button>
+            
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight text-center">
+              {formatMonth(currentYear, currentMonth)} <span className="text-indigo-600">{currentYear}</span>
+            </h1>
+            
+            <button
+              onClick={goToNextMonth}
+              className="p-2 hover:bg-slate-200 rounded-xl transition-colors"
+              title="Следующий месяц"
+            >
+              <ChevronRight size={24} className="text-slate-600" />
+            </button>
+          </div>
+
+          {/* Admin Controls */}
+          {userRole === 'admin' && (
+            <div className="flex items-center justify-between">
+              <div className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider">
+                Administrator
+              </div>
+              <button
+                onClick={() => setCurrentPage('bulk-edit')}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 shadow-lg text-sm"
+                title="Массовое редактирование"
+              >
+                <Edit3 size={16} />
+                <span className="hidden sm:inline">Массовое редактирование</span>
+                <span className="sm:hidden">Редактор</span>
+              </button>
             </div>
-            <div className="flex items-center gap-3">
-                {userRole === 'admin' && (
-                    <>
-                        <button
-                            onClick={() => setCurrentPage('bulk-edit')}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 shadow-lg"
-                            title="Массовое редактирование"
-                        >
-                            <Edit3 size={18} />
-                            <span className="hidden sm:inline">Массовое редактирование</span>
-                            <span className="sm:hidden">Редактор</span>
-                        </button>
-                        <div className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider">
-                            Administrator
-                        </div>
-                    </>
-                )}
-            </div>
+          )}
         </header>
 
         {/* ADMIN VIEW */}
@@ -209,6 +279,8 @@ const App: React.FC = () => {
                 schedule={schedule}
                 scheduleMap={scheduleMap}
                 stats={stats}
+                currentYear={currentYear}
+                currentMonth={currentMonth}
                 onUpdateSchedule={handleUpdateSchedule}
                 onSaveToCloud={handleSaveToCloud}
                 isSaving={isSaving}
@@ -237,9 +309,9 @@ const App: React.FC = () => {
 
                     {Array.from({ length: totalDays }).map((_, i) => {
                         const day = i + 1;
-                        const dateStr = `2025-12-${String(day).padStart(2, '0')}`;
+                        const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                         const item = scheduleMap[dateStr];
-                        const isToday = dateStr === todayStr;
+                        const isToday = checkIsToday(currentYear, currentMonth, day);
 
                         return (
                             <DayCell 
