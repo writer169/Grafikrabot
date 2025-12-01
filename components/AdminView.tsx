@@ -5,12 +5,14 @@ import { DayCell } from './DayCell';
 import { Stats } from './Stats';
 import { EditModal } from './EditModal';
 import { Save, Loader2, RefreshCcw } from 'lucide-react';
-import { cn } from '../utils';
+import { cn, getDaysInMonth, getFirstDayOfMonth, isToday as checkIsToday } from '../utils';
 
 interface AdminViewProps {
   schedule: ScheduleItem[];
   scheduleMap: Record<string, ScheduleItem>;
   stats: DayStats;
+  currentYear: number;
+  currentMonth: number;
   onUpdateSchedule: (newSchedule: ScheduleItem[]) => void;
   onSaveToCloud: () => Promise<void>;
   isSaving: boolean;
@@ -18,13 +20,21 @@ interface AdminViewProps {
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({ 
-    schedule, scheduleMap, stats, onUpdateSchedule, onSaveToCloud, isSaving, hasUnsavedChanges 
+    schedule, 
+    scheduleMap, 
+    stats, 
+    currentYear,
+    currentMonth,
+    onUpdateSchedule, 
+    onSaveToCloud, 
+    isSaving, 
+    hasUnsavedChanges 
 }) => {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const totalDays = 31;
-  const startEmptyDays = 0; // December 1st 2025 is Monday (index 0)
+  const totalDays = getDaysInMonth(currentYear, currentMonth);
+  const startEmptyDays = getFirstDayOfMonth(currentYear, currentMonth);
 
   const handleDayClick = (day: number) => {
     setSelectedDay(day);
@@ -75,15 +85,16 @@ export const AdminView: React.FC<AdminViewProps> = ({
 
             {Array.from({ length: totalDays }).map((_, i) => {
                 const day = i + 1;
-                const dateStr = `2025-12-${String(day).padStart(2, '0')}`;
+                const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const item = scheduleMap[dateStr];
+                const isToday = checkIsToday(currentYear, currentMonth, day);
                 
                 return (
                     <div key={day} className="relative group">
                         <DayCell 
                             day={day}
                             data={item}
-                            isToday={false}
+                            isToday={isToday}
                             onClick={() => handleDayClick(day)}
                         />
                         {/* Edit Hint Overlay */}
@@ -126,7 +137,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleSaveDay}
         day={selectedDay}
-        data={selectedDay ? scheduleMap[`2025-12-${String(selectedDay).padStart(2, '0')}`] : null}
+        currentYear={currentYear}
+        currentMonth={currentMonth}
+        data={selectedDay ? scheduleMap[`${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`] : null}
       />
     </div>
   );
