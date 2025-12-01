@@ -5,8 +5,9 @@ import { DayCell } from './components/DayCell';
 import { DetailsModal } from './components/DetailsModal';
 import { Stats } from './components/Stats';
 import { AdminView } from './components/AdminView';
+import { BulkEditPage } from './components/BulkEditPage';
 import { getMonthStats } from './utils';
-import { Calendar as CalendarIcon, Lock, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Lock, Loader2, Edit3 } from 'lucide-react';
 
 // Fallback logic for when API is not available or local dev without Mongo
 const getInitialSchedule = () => DEFAULT_SCHEDULE;
@@ -17,6 +18,7 @@ const App: React.FC = () => {
   const [userRole, setUserRole] = useState<'admin' | 'user' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<'calendar' | 'bulk-edit'>('calendar');
 
   // Data State
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
@@ -111,7 +113,7 @@ const App: React.FC = () => {
         if (!res.ok) throw new Error("Failed to save");
         
         setHasUnsavedChanges(false);
-        // Optional: Show success toast
+        alert("✅ Данные успешно сохранены!");
     } catch (e) {
         alert("Ошибка при сохранении!");
         console.error(e);
@@ -145,6 +147,20 @@ const App: React.FC = () => {
     );
   }
 
+  // Bulk Edit Page
+  if (currentPage === 'bulk-edit' && userRole === 'admin') {
+    return (
+      <BulkEditPage
+        schedule={schedule}
+        onUpdateSchedule={handleUpdateSchedule}
+        onSaveToCloud={handleSaveToCloud}
+        onBack={() => setCurrentPage('calendar')}
+        isSaving={isSaving}
+      />
+    );
+  }
+
+  // Main Calendar Page
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 selection:bg-indigo-100 selection:text-indigo-900">
       
@@ -167,11 +183,24 @@ const App: React.FC = () => {
                     Декабрь <span className="text-indigo-600">2025</span>
                 </h1>
             </div>
-            {userRole === 'admin' && (
-                <div className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider">
-                    Administrator
-                </div>
-            )}
+            <div className="flex items-center gap-3">
+                {userRole === 'admin' && (
+                    <>
+                        <button
+                            onClick={() => setCurrentPage('bulk-edit')}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 shadow-lg"
+                            title="Массовое редактирование"
+                        >
+                            <Edit3 size={18} />
+                            <span className="hidden sm:inline">Массовое редактирование</span>
+                            <span className="sm:hidden">Редактор</span>
+                        </button>
+                        <div className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider">
+                            Administrator
+                        </div>
+                    </>
+                )}
+            </div>
         </header>
 
         {/* ADMIN VIEW */}
