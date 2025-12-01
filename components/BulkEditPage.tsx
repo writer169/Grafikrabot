@@ -2,9 +2,12 @@ import React, { useState, useMemo } from 'react';
 import { ScheduleItem, WorkStatus, WorkLocation, PartnerCode } from '../types';
 import { WEEKDAYS } from '../constants';
 import { Check, X, Calendar, Save, ArrowLeft, Trash2 } from 'lucide-react';
+import { getDaysInMonth, getFirstDayOfMonth, formatMonth, isToday as checkIsToday } from '../utils';
 
 interface BulkEditPageProps {
   schedule: ScheduleItem[];
+  currentYear: number;
+  currentMonth: number;
   onUpdateSchedule: (newSchedule: ScheduleItem[]) => void;
   onSaveToCloud: () => Promise<void>;
   onBack: () => void;
@@ -13,6 +16,8 @@ interface BulkEditPageProps {
 
 export const BulkEditPage: React.FC<BulkEditPageProps> = ({
   schedule,
+  currentYear,
+  currentMonth,
   onUpdateSchedule,
   onSaveToCloud,
   onBack,
@@ -31,8 +36,8 @@ export const BulkEditPage: React.FC<BulkEditPageProps> = ({
     return map;
   }, [schedule]);
 
-  const totalDays = 31;
-  const startEmptyDays = 0;
+  const totalDays = getDaysInMonth(currentYear, currentMonth);
+  const startEmptyDays = getFirstDayOfMonth(currentYear, currentMonth);
 
   const toggleDay = (day: number) => {
     const newSelected = new Set(selectedDays);
@@ -66,7 +71,7 @@ export const BulkEditPage: React.FC<BulkEditPageProps> = ({
     const existingDates = new Set(schedule.map(item => item.date));
 
     selectedDays.forEach(day => {
-      const dateStr = `2025-12-${String(day).padStart(2, '0')}`;
+      const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       
       const newItem: ScheduleItem = {
         date: dateStr,
@@ -101,7 +106,7 @@ export const BulkEditPage: React.FC<BulkEditPageProps> = ({
     }
 
     const selectedDates = Array.from(selectedDays).map(day => 
-      `2025-12-${String(day).padStart(2, '0')}`
+      `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     );
 
     const newSchedule = schedule.filter(item => !selectedDates.includes(item.date));
@@ -135,7 +140,7 @@ export const BulkEditPage: React.FC<BulkEditPageProps> = ({
             </h1>
           </div>
           <p className="text-slate-600">
-            Выбрано дней: <span className="font-bold text-indigo-600">{selectedDays.size}</span>
+            {formatMonth(currentYear, currentMonth)} {currentYear} · Выбрано дней: <span className="font-bold text-indigo-600">{selectedDays.size}</span>
           </p>
         </header>
 
@@ -143,7 +148,9 @@ export const BulkEditPage: React.FC<BulkEditPageProps> = ({
           {/* Calendar Grid */}
           <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-white/50">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-slate-700">Декабрь 2025</h2>
+              <h2 className="text-lg font-bold text-slate-700">
+                {formatMonth(currentYear, currentMonth)} {currentYear}
+              </h2>
               <div className="flex gap-2">
                 <button
                   onClick={selectAll}
@@ -179,9 +186,10 @@ export const BulkEditPage: React.FC<BulkEditPageProps> = ({
 
               {Array.from({ length: totalDays }).map((_, i) => {
                 const day = i + 1;
-                const dateStr = `2025-12-${String(day).padStart(2, '0')}`;
+                const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const item = scheduleMap[dateStr];
                 const isSelected = selectedDays.has(day);
+                const isToday = checkIsToday(currentYear, currentMonth, day);
 
                 return (
                   <button
@@ -193,6 +201,7 @@ export const BulkEditPage: React.FC<BulkEditPageProps> = ({
                         ? 'border-indigo-500 bg-indigo-50 shadow-lg scale-95' 
                         : 'border-slate-200 hover:border-indigo-300 hover:shadow-md'
                       }
+                      ${isToday ? 'ring-2 ring-rose-400 ring-offset-2' : ''}
                     `}
                   >
                     {/* Selection Indicator */}
