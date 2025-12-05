@@ -1,4 +1,4 @@
-Import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SCHEDULE_DATA as DEFAULT_SCHEDULE, WEEKDAYS } from './constants';
 import { ScheduleItem } from './types';
 import { DayCell } from './components/DayCell';
