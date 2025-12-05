@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+Import React, { useState, useEffect, useMemo } from 'react';
 import { SCHEDULE_DATA as DEFAULT_SCHEDULE, WEEKDAYS } from './constants';
 import { ScheduleItem } from './types';
 import { DayCell } from './components/DayCell';
@@ -20,6 +20,9 @@ import { Calendar as CalendarIcon, Lock, Loader2, Edit3, ChevronLeft, ChevronRig
 
 // Fallback logic for when API is not available
 const getInitialSchedule = () => DEFAULT_SCHEDULE;
+
+// Константа для ключа в LocalStorage
+const INSTALL_KEY = 'app_auth_key';
 
 const App: React.FC = () => {
   // Date State
@@ -43,19 +46,33 @@ const App: React.FC = () => {
   const [selectedData, setSelectedData] = useState<ScheduleItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Fetch data when month/year changes
+  // Fetch data when month/year changes and handle key persistence (ИЗМЕНЕННЫЙ БЛОК)
   useEffect(() => {
+    // 1. Поиск ключа в URL
     const params = new URLSearchParams(window.location.search);
-    const key = params.get('key') || params.get('k');
+    let key = params.get('key') || params.get('k');
+
+    // 2. Если ключ найден в URL, сохраняем его и чистим URL (для красоты)
+    if (key) {
+      localStorage.setItem(INSTALL_KEY, key);
+      // Очистка URL в браузере, чтобы ключ не висел.
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      // 3. Если ключа в URL нет (запуск PWA), берем его из памяти
+      key = localStorage.getItem(INSTALL_KEY);
+    }
     
+    // 4. Проверка наличия ключа
     if (!key) {
       setError("Отсутствует ключ доступа");
       setIsLoading(false);
       return;
     }
-
+    
+    // Ключ найден (или в URL, или в LocalStorage)
     setAccessKey(key);
-
+    
+    // --- Начинаем логику загрузки данных с использованием найденного ключа ---
     const fetchData = async () => {
       setIsLoading(true);
       try {
@@ -64,6 +81,8 @@ const App: React.FC = () => {
         if (res.status === 401 || res.status === 403) {
            setError("Неверный ключ доступа");
            setIsLoading(false);
+           // Очистить ключ, чтобы пользователь зашел по новой ссылке
+           localStorage.removeItem(INSTALL_KEY);
            return;
         }
 
@@ -100,7 +119,7 @@ const App: React.FC = () => {
     };
 
     fetchData();
-  }, [currentMonth, currentYear]);
+  }, [currentMonth, currentYear]); // Зависимости остаются прежними
 
   // Derived State
   const scheduleMap = useMemo(() => {
