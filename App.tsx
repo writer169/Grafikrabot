@@ -6,6 +6,7 @@ import { DetailsModal } from './components/DetailsModal';
 import { Stats } from './components/Stats';
 import { AdminView } from './components/AdminView';
 import { BulkEditPage } from './components/BulkEditPage';
+import { InstallPrompt } from './components/InstallPrompt';
 import { 
   getMonthStats, 
   getDaysInMonth, 
@@ -338,6 +339,9 @@ const App: React.FC = () => {
         />
 
       </div>
+      
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 };
